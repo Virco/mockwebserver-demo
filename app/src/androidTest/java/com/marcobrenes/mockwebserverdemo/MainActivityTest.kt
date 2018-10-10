@@ -8,6 +8,7 @@ import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.rule.ActivityTestRule
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import java.io.IOException
@@ -17,17 +18,18 @@ class MainActivityTest {
     val activityTestRule = ActivityTestRule(MainActivity::class.java, true, false)
     @get:Rule
     val okHttpIdlingResourceRule = OkHttpIdlingResourceRule()
+    @get:Rule
+    val mockWebServerRule = MockWebServerRule()
+
+    @Before
+    fun setBaseUrl() {
+        val app = ApplicationProvider.getApplicationContext() as TestDemoApplication
+        app.baseUrl = mockWebServerRule.server.url("/").toString()
+    }
 
     @Test
     fun followers() {
-
-        val app = ApplicationProvider.getApplicationContext() as TestDemoApplication
-        val server = MockWebServer()
-        server.start()
-
-        app.baseUrl = server.url("/").toString()
-
-        server.enqueue(MockResponse().setBody("""
+        mockWebServerRule.server.enqueue(MockResponse().setBody("""
             |{
             |   "login": "octocat",
             |   "followers": 1500
@@ -37,7 +39,5 @@ class MainActivityTest {
 
         onView(withId(R.id.followers))
                 .check(matches(withText("octocat: 1500")))
-
-        server.shutdown()
     }
 }

@@ -7,11 +7,10 @@ import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.rule.ActivityTestRule
 import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class MainActivityTest {
     @get:Rule
@@ -21,6 +20,13 @@ class MainActivityTest {
     @get:Rule
     val mockWebServerRule = MockWebServerRule()
 
+    private val OCTOCAT_BODY = """
+            |{
+            |   "login": "octocat",
+            |   "followers": 1500
+            |}
+        """.trimMargin()
+
     @Before
     fun setBaseUrl() {
         val app = ApplicationProvider.getApplicationContext() as TestDemoApplication
@@ -29,15 +35,35 @@ class MainActivityTest {
 
     @Test
     fun followers() {
-        mockWebServerRule.server.enqueue(MockResponse().setBody("""
-            |{
-            |   "login": "octocat",
-            |   "followers": 1500
-            |}
-        """.trimMargin()))
+        mockWebServerRule.server.enqueue(MockResponse().setBody(OCTOCAT_BODY))
         activityTestRule.launchActivity(null)
 
         onView(withId(R.id.followers))
                 .check(matches(withText("octocat: 1500")))
+    }
+
+    @Test
+    fun status404() {
+        mockWebServerRule.server.enqueue(MockResponse().setResponseCode(404))
+        activityTestRule.launchActivity(null)
+        onView(withId(R.id.followers))
+                .check(matches(withText("404")))
+    }
+
+    @Test
+    fun malformedJson() {
+        mockWebServerRule.server.enqueue(MockResponse().setBody("Jason"))
+        activityTestRule.launchActivity(null)
+        onView(withId(R.id.followers))
+                .check(matches(withText("JsonEncodingException")))
+    }
+
+    @Test
+    fun timeout() {
+        mockWebServerRule.server.enqueue(MockResponse().setBody(OCTOCAT_BODY)
+                .throttleBody(1, 1, TimeUnit.SECONDS))
+        activityTestRule.launchActivity(null)
+        onView(withId(R.id.followers))
+                .check(matches(withText("SocketTimeoutException")))
     }
 }

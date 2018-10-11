@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity() {
         service.getUser("octocat").enqueue(object: Callback<User> {
             override fun onFailure(call: Call<User>, t: Throwable) {
                 Log.e(MainActivity::class.java.simpleName, t.message, t)
+                textView.text = t::class.java.simpleName
             }
 
             override fun onResponse(call: Call<User>, response: Response<User>) {

@@ -7,6 +7,7 @@ import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.rule.ActivityTestRule
 import okhttp3.mockwebserver.MockResponse
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -40,6 +41,9 @@ class MainActivityTest {
 
         onView(withId(R.id.followers))
                 .check(matches(withText("octocat: 1500")))
+
+        val recordedRequest = mockWebServerRule.server.takeRequest()
+        assertEquals("/users/octocat", recordedRequest.path)
     }
 
     @Test

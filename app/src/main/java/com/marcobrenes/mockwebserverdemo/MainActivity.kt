@@ -4,6 +4,7 @@ import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.widget.TextView
+import androidx.annotation.IdRes
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
@@ -16,7 +17,6 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val textView = findViewById<TextView>(R.id.followers)
         val app = application as DemoApplication
         val retrofit = Retrofit.Builder()
                 .baseUrl(app.baseUrl)
@@ -25,7 +25,16 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
         val service = retrofit.create(GithubService::class.java)
-        service.getUser("octocat").enqueue(object: Callback<User> {
+
+        showFollowers(service, "octocat", R.id.followers)
+        showFollowers(service, "virco", R.id.followers_1)
+        showFollowers(service, "chiuki", R.id.followers_2)
+
+    }
+
+    private fun showFollowers(service: GithubService, username: String, @IdRes textViewId: Int) {
+        val textView: TextView = findViewById(textViewId)
+        service.getUser(username).enqueue(object: Callback<User> {
             override fun onFailure(call: Call<User>, t: Throwable) {
                 Log.e(MainActivity::class.java.simpleName, t.message, t)
                 textView.text = t::class.java.simpleName

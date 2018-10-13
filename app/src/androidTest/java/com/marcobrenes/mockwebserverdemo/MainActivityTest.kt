@@ -1,84 +1,36 @@
 package com.marcobrenes.mockwebserverdemo
 
-import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.assertion.ViewAssertions.matches
 import androidx.test.espresso.matcher.ViewMatchers.withId
 import androidx.test.espresso.matcher.ViewMatchers.withText
 import androidx.test.rule.ActivityTestRule
-import okhttp3.mockwebserver.Dispatcher
-import okhttp3.mockwebserver.MockResponse
-import okhttp3.mockwebserver.MockWebServer
-import okhttp3.mockwebserver.RecordedRequest
-import org.junit.Assert.assertEquals
-import org.junit.Before
+import io.appflate.restmock.RESTMockServer
+import io.appflate.restmock.RequestsVerifier
+import io.appflate.restmock.utils.RequestMatchers.pathEndsWith
+import io.appflate.restmock.utils.RequestMatchers.pathStartsWith
 import org.junit.Rule
 import org.junit.Test
-import java.util.concurrent.TimeUnit
 
 class MainActivityTest {
-    @get:Rule
-    val activityTestRule = ActivityTestRule(MainActivity::class.java, true, false)
-    @get:Rule
-    val okHttpIdlingResourceRule = OkHttpIdlingResourceRule()
-    @get:Rule val server = MockWebServer()
+    @get:Rule val activityTestRule = ActivityTestRule(MainActivity::class.java, true, false)
+    @get:Rule val okHttpIdlingResourceRule = OkHttpIdlingResourceRule()
 
-    private val OCTOCAT_BODY = """{"login":"octocat", "followers":1500}"""
-    private val JESSE_BODY = """{"login":"swankjesse", "followers":2400}"""
-    private val CHIUKI_BODY = """{"login":"chiuki", "followers":1000}"""
-
-    @Before
-    fun setBaseUrl() {
-        val app = ApplicationProvider.getApplicationContext() as TestDemoApplication
-        app.baseUrl = server.url("/").toString()
-    }
-
-    @Test
-    fun followers() {
-        //server.enqueue(MockResponse().setBody(OCTOCAT_BODY))
-        val dispatcher: Dispatcher = object: Dispatcher() {
-            override fun dispatch(request: RecordedRequest?): MockResponse {
-                request?.let {
-                    val path = it.path
-                    val parts = path.split("/")
-                    val username = parts[parts.size - 1]
-                    return MockResponse().setBody(
-                            """{"login":"$username", "followers":${username.length}}"""
-                    )
-                } ?: return MockResponse()
-            }
-        }
-        server.setDispatcher(dispatcher)
+    @Test fun followers() {
+        RESTMockServer.reset()
+        RESTMockServer.whenGET(pathEndsWith("octocat"))
+                .thenReturnFile("users/octocat.json")
         activityTestRule.launchActivity(null)
+        onView(withId(R.id.followers)).check(matches(withText("octocat: 1500")))
 
-        onView(withId(R.id.followers)).check(matches(withText("octocat: 7")))
-        onView(withId(R.id.followers_1)).check(matches(withText("virco: 5")))
-        onView(withId(R.id.followers_2)).check(matches(withText("chiuki: 6")))
-
+        RequestsVerifier.verifyGET(pathStartsWith("/users/octocat")).invoked()
     }
-//
-//    @Test
-//    fun status404() {
-//        server.enqueue(MockResponse().setResponseCode(404))
-//        activityTestRule.launchActivity(null)
-//        onView(withId(R.id.followers))
-//                .check(matches(withText("404")))
-//    }
-//
-//    @Test
-//    fun malformedJson() {
-//        server.enqueue(MockResponse().setBody("Jason"))
-//        activityTestRule.launchActivity(null)
-//        onView(withId(R.id.followers))
-//                .check(matches(withText("JsonEncodingException")))
-//    }
-//
-//    @Test
-//    fun timeout() {
-//        server.enqueue(MockResponse().setBody(OCTOCAT_BODY)
-//                .throttleBody(1, 1, TimeUnit.SECONDS))
-//        activityTestRule.launchActivity(null)
-//        onView(withId(R.id.followers))
-//                .check(matches(withText("SocketTimeoutException")))
-//    }
+
+    @Test fun status404() {
+        RESTMockServer.whenGET(pathEndsWith("octocat"))
+                .thenReturnEmpty(404)
+        activityTestRule.launchActivity(null)
+        onView(withId(R.id.followers))
+                .check(matches(withText("404")))
+    }
 }

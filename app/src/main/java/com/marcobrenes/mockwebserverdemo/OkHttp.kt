@@ -1,6 +1,7 @@
 package com.marcobrenes.mockwebserverdemo
 
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 
 interface OkHttp {
@@ -9,6 +10,9 @@ interface OkHttp {
             OkHttpClient.Builder()
                     .readTimeout(1, TimeUnit.SECONDS)
                     .connectTimeout(1, TimeUnit.SECONDS)
+                    .addInterceptor(HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BASIC
+                    })
                     .build()
         }
     }

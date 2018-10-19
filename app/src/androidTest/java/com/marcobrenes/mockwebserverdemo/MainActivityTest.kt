@@ -10,17 +10,16 @@ import okhttp3.mockwebserver.Dispatcher
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import okhttp3.mockwebserver.RecordedRequest
-import org.junit.Assert.assertEquals
+import okhttp3.tls.HandshakeCertificates
+import okhttp3.tls.HeldCertificate
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import java.util.concurrent.TimeUnit
+import java.net.InetAddress
 
 class MainActivityTest {
-    @get:Rule
-    val activityTestRule = ActivityTestRule(MainActivity::class.java, true, false)
-    @get:Rule
-    val okHttpIdlingResourceRule = OkHttpIdlingResourceRule()
+    @get:Rule val activityTestRule = ActivityTestRule(MainActivity::class.java, true, false)
+    @get:Rule val okHttpIdlingResourceRule = OkHttpIdlingResourceRule()
     @get:Rule val server = MockWebServer()
 
     private val OCTOCAT_BODY = """{"login":"octocat", "followers":1500}"""
@@ -30,12 +29,32 @@ class MainActivityTest {
     @Before
     fun setBaseUrl() {
         val app = ApplicationProvider.getApplicationContext() as TestDemoApplication
+        val localHost = createLocalHost()
+        server.useHttps(localHost.sslSocketFactory(), false)
+        val client = OkHttp.instance.newBuilder()
+        client.sslSocketFactory(localHost.sslSocketFactory(), localHost.trustManager())
+        OkHttp.instance = client.build()
         app.baseUrl = server.url("/").toString()
+    }
+
+    private fun createLocalHost(): HandshakeCertificates {
+        // Generate a self-signed cert for the server to serve and the client to trust.
+        val heldCertificate = HeldCertificate.Builder()
+                .rsa2048()
+                .commonName("localhost")
+                .addSubjectAlternativeName(InetAddress.getByName("localhost").canonicalHostName)
+                .build()
+
+        return  HandshakeCertificates.Builder()
+                .heldCertificate(heldCertificate)
+                .addTrustedCertificate(heldCertificate.certificate())
+                .addPlatformTrustedCertificates()
+                .build()
+
     }
 
     @Test
     fun followers() {
-        //server.enqueue(MockResponse().setBody(OCTOCAT_BODY))
         val dispatcher: Dispatcher = object: Dispatcher() {
             override fun dispatch(request: RecordedRequest?): MockResponse {
                 request?.let {
@@ -54,31 +73,5 @@ class MainActivityTest {
         onView(withId(R.id.followers)).check(matches(withText("octocat: 7")))
         onView(withId(R.id.followers_1)).check(matches(withText("virco: 5")))
         onView(withId(R.id.followers_2)).check(matches(withText("chiuki: 6")))
-
     }
-//
-//    @Test
-//    fun status404() {
-//        server.enqueue(MockResponse().setResponseCode(404))
-//        activityTestRule.launchActivity(null)
-//        onView(withId(R.id.followers))
-//                .check(matches(withText("404")))
-//    }
-//
-//    @Test
-//    fun malformedJson() {
-//        server.enqueue(MockResponse().setBody("Jason"))
-//        activityTestRule.launchActivity(null)
-//        onView(withId(R.id.followers))
-//                .check(matches(withText("JsonEncodingException")))
-//    }
-//
-//    @Test
-//    fun timeout() {
-//        server.enqueue(MockResponse().setBody(OCTOCAT_BODY)
-//                .throttleBody(1, 1, TimeUnit.SECONDS))
-//        activityTestRule.launchActivity(null)
-//        onView(withId(R.id.followers))
-//                .check(matches(withText("SocketTimeoutException")))
-//    }
 }
